@@ -4,38 +4,33 @@ import Slash
 
 import Graphics.Vty
 
-main = do
-    s <- mySlash
-    slash s
+data MySlash = MySlash
+    { insertMode :: Bool }
 
-mySlash :: IO MySlash
-mySlash = do
-    i <- mkInternal
-    return $ MySlash i myHandler False
+main = slash mySlash myHandler
 
-myHandler :: Handler MySlash
+mySlash :: MySlash
+mySlash = MySlash False
+
+myHandler :: Handler (Slash MySlash)
 myHandler e s =
-    if insertMode s then handleInsert e s
+    if (insertMode . userData $ s) then handleInsert e s
     else handleNormal e s
 
-handleInsert :: Handler MySlash
-handleInsert e = case e of
-    EvKey (KASCII c) _ -> putKey c
-    EvKey KBS _ -> delete 1
-    _ -> id
+toggleInsert :: MySlash -> MySlash
+toggleInsert (MySlash False) = MySlash True
+toggleInsert (MySlash True) = MySlash False
 
-handleNormal :: Handler MySlash
+handleInsert :: Handler (Slash MySlash)
+handleInsert e s = case e of
+    EvKey (KASCII c) [] -> putKey c s
+    EvKey (KEnter) [] -> putKey '\n' s
+    EvKey KBS _ -> delete 1 s
+    EvKey (KASCII 'c') [MCtrl] -> changeUserData toggleInsert s
+    _ -> s
+
+handleNormal :: Handler (Slash MySlash)
 handleNormal e s = case e of
     EvKey (KASCII 'b') _ -> deleteBy Word 1 s
-    EvKey (KASCII 'i') _ -> s { insertMode = True }
-
-data MySlash = MySlash
-    { internal :: SlashInternal
-    , handler :: Handler MySlash
-    , insertMode :: Bool
-    }
-
-instance Slash MySlash where
-    getInternal = internal
-    setInternal m s = m { internal = s }
-    getHandler = handler
+    EvKey (KASCII 'i') _ -> changeUserData toggleInsert s
+    _ -> s

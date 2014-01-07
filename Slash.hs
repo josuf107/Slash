@@ -1,61 +1,51 @@
-{-# LANGUAGE TemplateHaskell #-}
 module Slash where
 
-import Control.Lens
 import Data.Word
 import Graphics.Vty
 import System.Posix.IO (stdInput)
 import System.Posix.Terminal
 
-data SlashInternal = SlashInternal
-    { slashContent :: String
-    , point :: (Word, Word)
-    , oattrs :: TerminalAttributes
-    , vty :: Vty
-    }
-
 type Handler a = Event -> a -> a
 
-class Slash a where
-    getInternal :: a -> SlashInternal
-    setInternal :: a -> SlashInternal -> a
-    getHandler :: a -> Handler a
+data Slash a = Slash
+    { slashContent :: String
+    , point :: (Word, Word)
+    , handler :: Handler (Slash a)
+    , vty :: Vty
+    , userData :: a
+    }
 
-changeInternal :: Slash a => (SlashInternal -> SlashInternal) -> a -> a
-changeInternal f a = setInternal a (f $ getInternal a)
+data TextUnit = Word
 
-mkInternal :: IO SlashInternal
-mkInternal = do
+slash :: a -> Handler (Slash a) -> IO ()
+slash u h = do
     oattrs <- getTerminalAttributes stdInput
     v <- mkVty
-    return $ SlashInternal "" (0, 0) oattrs v
+    input $ Slash "" (0, 0) h v u
+    setTerminalAttributes stdInput oattrs Immediately
 
-slash :: Slash a => a -> IO ()
-slash s = do
-    input $ s
-    setTerminalAttributes stdInput (oattrs . getInternal $ s) Immediately
-
-input :: Slash a => a -> IO ()
+input :: Slash a -> IO ()
 input s = do
-    (update . vty $ i) $ pic_for_image (string def_attr (slashContent i))
-    ev <- next_event (vty i)
+    (update . vty $ s) $ pic_for_image (string def_attr (slashContent s))
+    ev <- next_event (vty s)
     case ev of
         EvKey KEsc _ -> putStrLn "Bye"
-        k -> input (h k $ s)
-    where
-        i = getInternal s
-        h = getHandler s
+        k -> input . (handler s) k $ s
 
-changeText :: Slash a => (String -> String) -> a -> a
-changeText f = changeInternal g
-    where
-        g :: SlashInternal -> SlashInternal
-        g s = s { slashContent = f . slashContent $ s }
+changeUserData :: (a -> a) -> Slash a -> Slash a
+changeUserData f s = s { userData = f . userData $ s }
 
-putKey :: Slash a => Char -> a -> a
+changeText :: (String -> String) -> Slash a -> Slash a
+changeText f s = s { slashContent = f . slashContent $ s }
+
+putKey :: Char -> Slash a -> Slash a
 putKey c = changeText (++[c])
 
-delete :: Slash a => Int -> a -> a
+putString :: String -> Slash a -> Slash a
+putString s = changeText (++s)
+
+delete :: Int -> Slash a -> Slash a
 delete n = changeText (reverse . drop n . reverse)
 
-deleteBy :: Slash a => stuff
+deleteBy :: TextUnit -> Int -> Slash a -> Slash a
+deleteBy Word n = changeText (unwords . reverse . drop n . reverse . words)
