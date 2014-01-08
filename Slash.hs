@@ -1,11 +1,11 @@
 module Slash where
 
+import Slash.Handler
+
 import Data.Word
 import Graphics.Vty
 import System.Posix.IO (stdInput)
 import System.Posix.Terminal
-
-type Handler a = Event -> a -> a
 
 data Slash a = Slash
     { slashContent :: String

@@ -1,9 +1,10 @@
 module Java where
 
 import Slash
+import Slash.Handler
 
 import Data.Default
-import Graphics.Vty
+import Graphics.Vty as G
 import Language.Java.Parser
 import Language.Java.Pretty
 import Language.Java.Syntax
@@ -38,19 +39,17 @@ myHandler e s =
             else handleNormal e s
 
 handleInsert :: Handler (Slash MySlash)
-handleInsert e s = case e of
-    EvKey (KASCII c) [] -> putKey c s
-    EvKey (KEnter) [] -> putKey '\n' s
-    EvKey KBS _ -> delete 1 s
-    EvKey (KASCII 'c') [MCtrl] -> changeUserData toggleInsert s
-    _ -> s
+handleInsert =
+    withKey putKey
+    <+> onEnter (putKey '\n')
+    <+> onBack (delete 1)
+    <+> onCtrl 'c' (changeUserData toggleInsert)
 
 handleNormal :: Handler (Slash MySlash)
-handleNormal e s = case e of
-    EvKey (KASCII 'b') _ -> deleteBy Slash.Word 1 s
-    EvKey (KASCII 'i') _ -> changeUserData toggleInsert s
-    EvKey (KASCII 'c') _ -> changeUserData (\u -> u { building = ClassBuilder def Class}) s
-    _ -> s
+handleNormal =
+    onKey 'b' (deleteBy Slash.Word 1)
+    <+> onKey 'i' (putString "HI" . changeUserData toggleInsert)
+    <+> onKey 'c' (changeUserData (\u -> u { building = ClassBuilder def Class}))
 
 toggleInsert :: MySlash -> MySlash
 toggleInsert m = m { insertMode = not . insertMode $ m }
