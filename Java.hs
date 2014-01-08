@@ -1,16 +1,22 @@
-module Conf where
+module Java where
 
 import Slash
 
 import Graphics.Vty
+import Language.Java.Parser
+import Language.Java.Pretty
+import Language.Java.Syntax
+import Text.Parsec.Error (ParseError)
 
 data MySlash = MySlash
-    { insertMode :: Bool }
+    { insertMode :: Bool
+    , java :: Either ParseError CompilationUnit
+    }
 
 main = slash mySlash myHandler
 
 mySlash :: MySlash
-mySlash = MySlash False
+mySlash = MySlash False undefined
 
 myHandler :: Handler (Slash MySlash)
 myHandler e s =
@@ -18,8 +24,8 @@ myHandler e s =
     else handleNormal e s
 
 toggleInsert :: MySlash -> MySlash
-toggleInsert (MySlash False) = MySlash True
-toggleInsert (MySlash True) = MySlash False
+toggleInsert (MySlash False j) = MySlash True j
+toggleInsert (MySlash True j) = MySlash False j
 
 handleInsert :: Handler (Slash MySlash)
 handleInsert e s = case e of
@@ -31,6 +37,6 @@ handleInsert e s = case e of
 
 handleNormal :: Handler (Slash MySlash)
 handleNormal e s = case e of
-    EvKey (KASCII 'b') _ -> deleteBy Word 1 s
+    EvKey (KASCII 'b') _ -> deleteBy Slash.Word 1 s
     EvKey (KASCII 'i') _ -> changeUserData toggleInsert s
     _ -> s
