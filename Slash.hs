@@ -30,7 +30,7 @@ input s = do
     ev <- next_event (vty s)
     case ev of
         EvKey KEsc _ -> putStrLn "Bye"
-        k -> input . (handler s) k $ s
+        k -> input . handler s k $ s
 
 changeUserData :: (a -> a) -> Slash a -> Slash a
 changeUserData f s = s { userData = f . userData $ s }

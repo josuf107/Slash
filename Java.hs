@@ -107,7 +107,7 @@ handleBuilder e cb@(ClassBuilder c p) =
         ClassName -> case e of
             EvKey (KASCII 'c') [MCtrl] -> ClassBuilder c Class
             EvKey KBS _ -> ClassBuilder (identify removeLast c) p
-            EvKey (KASCII k) _ -> ClassBuilder ((identify (++ [k])) c) p
+            EvKey (KASCII k) _ -> ClassBuilder (identify (++ [k]) c) p
             _ -> cb
         Done -> cb
 
