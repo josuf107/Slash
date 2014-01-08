@@ -48,7 +48,7 @@ handleInsert =
 handleNormal :: Handler (Slash MySlash)
 handleNormal =
     onKey 'b' (deleteBy Slash.Word 1)
-    <+> onKey 'i' (putString "HI" . changeUserData toggleInsert)
+    <+> onKey 'i' (changeUserData toggleInsert)
     <+> onKey 'c' (changeUserData (\u -> u { building = ClassBuilder def Class}))
 
 toggleInsert :: MySlash -> MySlash

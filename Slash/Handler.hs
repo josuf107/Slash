@@ -14,7 +14,7 @@ withKey f e = case e of
 
 onKey :: Char -> (a -> a) -> Handler a
 onKey c f e = case e of
-    EvKey (KASCII c) [] -> f
+    EvKey (KASCII k) [] -> if k == c then f else id
     _ -> id
 
 onEnter :: (a -> a) -> Handler a
@@ -29,10 +29,10 @@ onBack f e = case e of
 
 onShift :: Char -> (a -> a) -> Handler a
 onShift c f e = case e of
-    EvKey (KASCII c) [MShift] -> f
+    EvKey (KASCII k) [MShift] -> if k == c then f else id
     _ -> id
 
 onCtrl :: Char -> (a -> a) -> Handler a
 onCtrl c f e = case e of
-    EvKey (KASCII c) [MCtrl] -> f
+    EvKey (KASCII k) [MCtrl] -> if k == c then f else id
     _ -> id
