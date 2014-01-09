@@ -3,11 +3,12 @@ module Java where
 import Slash
 import Slash.Handler
 
+import Java.AST
+
 import Control.Lens
-import qualified Data.List as L
 import Graphics.Vty as G
 import Language.Java.Pretty
-import Language.Java.Syntax as J
+import Language.Java.Syntax
 
 data ClassPart = ClassName | Class | Done deriving Eq
 data Builder = ClassBuilder ClassDecl ClassPart
@@ -26,28 +27,6 @@ data MySlash = MySlash
     { insertMode :: Bool
     , building :: Maybe Builder
     }
-
-modifyClass :: Lens' ClassDecl [J.Modifier]
-modifyClass = lens
-    (\(ClassDecl ms _ _ _ _ _) -> ms)
-    (\(ClassDecl _ i ts mrt rts b) ms -> ClassDecl (L.nub ms) i ts mrt rts b)
-
-identifyClass :: Lens' ClassDecl String
-identifyClass = lens
-    (\(ClassDecl _ (Ident i) _ _ _ _) -> i)
-    (\(ClassDecl ms _ ts mrt rts b) i -> ClassDecl ms (Ident i) ts mrt rts b)
-
-emptyClass :: ClassDecl
-emptyClass = ClassDecl [] (Ident "") [] Nothing [] emptyClassBody
-
-emptyClassBody :: ClassBody
-emptyClassBody = ClassBody []
-
-emptyEnum :: ClassDecl
-emptyEnum = EnumDecl [] (Ident "") [] emptyEnumBody
-
-emptyEnumBody :: EnumBody
-emptyEnumBody = EnumBody [] []
 
 main :: IO ()
 main = slash mySlash myHandler
