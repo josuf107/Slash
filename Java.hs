@@ -1,4 +1,4 @@
-module Java (main) where
+module Java where
 
 import Slash
 import Slash.Handler
@@ -25,23 +25,25 @@ data MySlash = MySlash
     , building :: Maybe Builder
     }
 
-class Modifiable a where
-    modify :: J.Modifier -> a -> a
+data Modifiable a = Modifiable { modify :: J.Modifier -> a -> a }
 
-class Identifiable a where
-    identify :: (String -> String) -> a -> a
+modifiableClass :: Modifiable ClassDecl
+modifiableClass = Modifiable modify'
+    where
+        modify' m (ClassDecl ms i ts mrt rts b) =
+                ClassDecl (m:ms) i ts mrt rts b
+        modify' m (EnumDecl ms i rts b) =
+                EnumDecl (m:ms) i rts b
 
-instance Modifiable ClassDecl where
-    modify m (ClassDecl ms i ts mrt rts b) =
-            ClassDecl (m:ms) i ts mrt rts b
-    modify m (EnumDecl ms i rts b) =
-            EnumDecl (m:ms) i rts b
+data Identifiable a = Identifiable { identify :: (String -> String) -> a -> a }
 
-instance Identifiable ClassDecl where
-    identify f (ClassDecl ms (Ident i) ts mrt rts b) =
-            ClassDecl ms (Ident . f $ i) ts mrt rts b
-    identify f (EnumDecl ms (Ident i) rts b) =
-            EnumDecl ms (Ident . f $ i) rts b
+identifiableClass :: Identifiable ClassDecl
+identifiableClass = Identifiable identify'
+    where
+        identify' f (ClassDecl ms (Ident i) ts mrt rts b) =
+                ClassDecl ms (Ident . f $ i) ts mrt rts b
+        identify' f (EnumDecl ms (Ident i) rts b) =
+                EnumDecl ms (Ident . f $ i) rts b
 
 -- Avoiding orphan instances
 class Default a where
@@ -101,13 +103,13 @@ handleBuilder e cb@(ClassBuilder c p) =
     case p of
         Class -> case e of
             EvKey (KASCII 'c') [MCtrl] -> ClassBuilder c Done
-            EvKey (KASCII 'P') _ -> ClassBuilder (modify Public c) p
+            EvKey (KASCII 'P') _ -> ClassBuilder ((modify modifiableClass) Public c) p
             EvKey (KASCII 'n') _ -> ClassBuilder c ClassName
             _ -> cb
         ClassName -> case e of
             EvKey (KASCII 'c') [MCtrl] -> ClassBuilder c Class
-            EvKey KBS _ -> ClassBuilder (identify removeLast c) p
-            EvKey (KASCII k) _ -> ClassBuilder (identify (++ [k]) c) p
+            EvKey KBS _ -> ClassBuilder ((identify identifiableClass) removeLast c) p
+            EvKey (KASCII k) _ -> ClassBuilder ((identify identifiableClass) (++ [k]) c) p
             _ -> cb
         Done -> cb
 
