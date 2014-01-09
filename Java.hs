@@ -3,6 +3,8 @@ module Java where
 import Slash
 import Slash.Handler
 
+import Control.Lens
+import qualified Data.List as L
 import Graphics.Vty as G
 import Language.Java.Pretty
 import Language.Java.Syntax as J
@@ -11,7 +13,7 @@ data ClassPart = ClassName | Class | Done deriving Eq
 data Builder = ClassBuilder ClassDecl ClassPart
 
 newClassBuilder :: Builder
-newClassBuilder = ClassBuilder def Class
+newClassBuilder = ClassBuilder emptyClass Class
 
 isBuilt :: Builder -> Bool
 isBuilt (ClassBuilder _ Done) = True
@@ -25,38 +27,27 @@ data MySlash = MySlash
     , building :: Maybe Builder
     }
 
-data Modifiable a = Modifiable { modify :: J.Modifier -> a -> a }
+modifyClass :: Lens' ClassDecl [J.Modifier]
+modifyClass = lens
+    (\(ClassDecl ms _ _ _ _ _) -> ms)
+    (\(ClassDecl _ i ts mrt rts b) ms -> ClassDecl (L.nub ms) i ts mrt rts b)
 
-modifiableClass :: Modifiable ClassDecl
-modifiableClass = Modifiable modify'
-    where
-        modify' m (ClassDecl ms i ts mrt rts b) =
-                ClassDecl (m:ms) i ts mrt rts b
-        modify' m (EnumDecl ms i rts b) =
-                EnumDecl (m:ms) i rts b
+identifyClass :: Lens' ClassDecl String
+identifyClass = lens
+    (\(ClassDecl _ (Ident i) _ _ _ _) -> i)
+    (\(ClassDecl ms _ ts mrt rts b) i -> ClassDecl ms (Ident i) ts mrt rts b)
 
-data Identifiable a = Identifiable { identify :: (String -> String) -> a -> a }
+emptyClass :: ClassDecl
+emptyClass = ClassDecl [] (Ident "") [] Nothing [] emptyClassBody
 
-identifiableClass :: Identifiable ClassDecl
-identifiableClass = Identifiable identify'
-    where
-        identify' f (ClassDecl ms (Ident i) ts mrt rts b) =
-                ClassDecl ms (Ident . f $ i) ts mrt rts b
-        identify' f (EnumDecl ms (Ident i) rts b) =
-                EnumDecl ms (Ident . f $ i) rts b
+emptyClassBody :: ClassBody
+emptyClassBody = ClassBody []
 
--- Avoiding orphan instances
-class Default a where
-    def :: a
+emptyEnum :: ClassDecl
+emptyEnum = EnumDecl [] (Ident "") [] emptyEnumBody
 
-instance Default [a] where
-    def = []
-
-instance Default ClassDecl where
-    def = ClassDecl def (Ident def) def Nothing def def
-
-instance Default ClassBody where
-    def = ClassBody def
+emptyEnumBody :: EnumBody
+emptyEnumBody = EnumBody [] []
 
 main :: IO ()
 main = slash mySlash myHandler
@@ -103,13 +94,13 @@ handleBuilder e cb@(ClassBuilder c p) =
     case p of
         Class -> case e of
             EvKey (KASCII 'c') [MCtrl] -> ClassBuilder c Done
-            EvKey (KASCII 'P') _ -> ClassBuilder ((modify modifiableClass) Public c) p
+            EvKey (KASCII 'P') _ -> ClassBuilder (c & modifyClass <>~ [Public]) p
             EvKey (KASCII 'n') _ -> ClassBuilder c ClassName
             _ -> cb
         ClassName -> case e of
             EvKey (KASCII 'c') [MCtrl] -> ClassBuilder c Class
-            EvKey KBS _ -> ClassBuilder ((identify identifiableClass) removeLast c) p
-            EvKey (KASCII k) _ -> ClassBuilder ((identify identifiableClass) (++ [k]) c) p
+            EvKey KBS _ -> ClassBuilder (c & identifyClass %~ removeLast) p
+            EvKey (KASCII k) _ -> ClassBuilder (c & identifyClass <>~ [k]) p
             _ -> cb
         Done -> cb
 
