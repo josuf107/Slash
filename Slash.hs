@@ -35,6 +35,9 @@ input s = do
 changeUserData :: (a -> a) -> Slash a -> Slash a
 changeUserData f s = s { userData = f . userData $ s }
 
+visibleContent :: Slash a -> String
+visibleContent = slashContent
+
 changeText :: (String -> String) -> Slash a -> Slash a
 changeText f s = s { slashContent = f . slashContent $ s }
 
