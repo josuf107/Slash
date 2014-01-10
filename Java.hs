@@ -1,4 +1,4 @@
-module Java where
+module Main where
 
 import Slash
 import Slash.Handler
